@@ -2,6 +2,39 @@
 
 Analysis of geometric pair bias (B) vs content score (C) in Proteina's attention mechanism during flow-based protein structure generation.
 
+## For Report Reviewers
+
+This directory contains companion experiments for:
+> **"How Does Geometric Bias Shape the Denoising Trajectory in Flow-Based Protein Structure Generation?"**
+
+Proteina's attention computes **A = softmax(C + B)** where C = QK^T/√d is the content score
+and B is the geometric pair bias. We decompose attention across timesteps, layers, and heads
+to understand how B shapes generation.
+
+### Figure → Code Map
+
+Pre-computed results are included in each `artifacts/` subdirectory, so all scripts below
+can be run with `--aggregate-only` (unified runners) or `--load-only` (individual `experiment.py`
+files) to print summaries **without re-running structure generation**.
+
+| Figure | Script | Quick inspect (no GPU needed) |
+|--------|--------|-------------------------------|
+| Fig 1 — R_c heatmaps + trajectory lines | `descriptive/run_descriptive.py` | `python experiments/descriptive/run_descriptive.py --model 60m --aggregate-only` |
+| Fig 2 — sequence separation breakdown | `descriptive/run_descriptive.py` | same as above |
+| Fig 3 — contact precision (B-only vs C-only) | `descriptive/run_descriptive.py` | same as above |
+| Fig 4 — temporal ablation sweep | `causal/run_temporal_sweep.py` | `python experiments/causal/run_causal.py --model 60m --aggregate-only` |
+| Fig 5 — structure lens (per-layer decoding) | `structure_lens/run_structure_lens.py` | `python experiments/structure_lens/run_structure_lens.py --model 60m --aggregate-only` |
+| Fig 6 — raw R vs row-centred R_c | `descriptive/run_descriptive.py` | same as Fig 1 |
+| Ablation table (Table 3) | `causal/run_causal.py` | `python experiments/causal/run_causal.py --model 60m --aggregate-only` |
+| All figures (PDF-ready) | `plot_figures.py` | `python experiments/plot_figures.py` |
+
+### Analysis Infrastructure
+
+The hooks and metrics used across all experiments live in `proteinfoundation/analysis/`:
+- `crystallization_hooks.py` — forward hooks on attention layers that capture B and C separately during inference
+- `crystallization_metrics.py` — computes R_c (row-centred dominance ratio), entropy H, Spearman ρ, seqsep breakdown
+- `trajectory_analyzer.py` — orchestrates multi-timestep generation runs and aggregates metrics across seeds
+
 ## Directory Structure
 
 ```

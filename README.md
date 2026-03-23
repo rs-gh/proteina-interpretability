@@ -33,6 +33,14 @@
 
 *Abstract.* Diffusion- and flow-based generative models of protein structures have emerged as a powerful tool for de novo protein design. Here, we develop **Proteina**, a new large-scale flow-based protein backbone generator that utilizes hierarchical fold class labels for conditioning and relies on a tailored scalable transformer architecture with up to $5\times$ as many parameters as previous models. To meaningfully quantify performance, we introduce a new set of metrics that directly measure the distributional similarity of generated proteins with reference sets, complementing existing metrics. We further explore scaling training data to millions of synthetic protein structures and explore improved training and sampling recipes adapted to protein backbone generation. This includes fine-tuning strategies like LoRA for protein backbones, new guidance methods like classifier-free guidance and autoguidance for protein backbones, and new adjusted training objectives. Proteina achieves state-of-the-art performance on de novo protein backbone design and produces diverse and designable proteins at unprecedented length, up to 800 residues. The hierarchical conditioning offers novel control, enabling high-level secondary-structure guidance as well as low-level fold-specific generation.
 
+## Interpretability Analysis
+
+This repository also includes companion code for a mechanistic interpretability study of Proteina's attention mechanism:
+
+> **"How Does Geometric Bias Shape the Denoising Trajectory in Flow-Based Protein Structure Generation?"**
+
+See [`experiments/README.md`](experiments/README.md) for an overview and figure-to-code map.
+
 ## Setup
 
 For environment setup [mamba](https://mamba.readthedocs.io/en/latest/user_guide/mamba.html) or [micromamba](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html) is recommended, but alternatively conda can also be used as a drop-in replacement (substitute `mamba` with `conda`).
