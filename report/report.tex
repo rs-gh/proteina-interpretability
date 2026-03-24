@@ -34,7 +34,7 @@ Generative models for protein backbone structure have advanced rapidly, with flo
 Proteina~\citep{geffner2025proteina} scales flow-based protein generation to state-of-the-art quality by combining a transformer backbone with a \emph{pair bias attention} mechanism that fuses learned content scores with geometric pair biases.
 Unlike SE(3)-equivariant networks~\citep{thomas2018tensor,fuchs2020se3} or invariant point attention~\citep{jumper2021alphafold2}, Proteina uses standard (non-equivariant) transformer layers, with geometry entering only through an additive pair bias $B$ derived from pairwise distances and sequence separation --- a soft invariant prior that reflects a broader trend toward soft geometric priors over hard-coded symmetries~\citep{dosovitskiy2021image,kim2022tokengt,abramson2024alphafold3}.
 
-We ask two questions about the dynamics of $B$ during generation: \textbf{when} does geometric bias become causally essential, and \textbf{where} in the network does it act?
+We ask two questions about the dynamics of $B$ during unconditional generation: \textbf{when} does geometric bias become causally essential, and \textbf{where} in the network does it act?
 Proteina samples via SDE integration from pure noise ($t{=}0$) to a structured backbone ($t{=}1$).
 At each step, every attention layer computes:
 \begin{equation}
