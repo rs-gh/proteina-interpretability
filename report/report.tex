@@ -21,7 +21,7 @@ in Flow-Based Protein Structure Generation?}
 \begin{abstract}
 Proteina is a flow-based generative model for protein backbone structure where geometry enters only as an additive pair bias $B$ to attention scores.
 We study two questions in unconditional generation: \emph{when} does $B$ become causally essential during generation, and \emph{where} in the network is it most critical?
-Our central finding, in response to the \emph{when} question, is that geometric guidance is memoryless: $B$'s effect depends only on its current availability, not its history. Providing $B$ only during late generation always preserves valid structures, though with gradually reduced quality as the late window shrinks (the present is sufficient), while providing $B$ only during early generation is indistinguishable from never having $B$ at all (history does not matter).
+Our central finding, in response to the \emph{when} question, is that geometric guidance is memoryless: $B$'s effect depends only on its current availability, not its history. Providing $B$ only during late generation always preserves valid structures, though with gradually reduced quality as the late window shrinks, while providing $B$ only during early generation is indistinguishable from never having $B$ at all.
 This temporal asymmetry is universal across all model scales (60M--400M parameters), model architectures, and protein lengths tested, despite order-of-magnitude variation in the descriptive geometry--content balance across models.
 However, architecture does change \emph{where} geometry matters: without triangle updates, shallow layers are most sensitive to $B$ removal; with triangle updates, this inverts, and deep layers become critical while shallow layers become dispensable.
 Our characterisation motivates future work on representation alignment in generative models for biochemistry.
@@ -51,6 +51,7 @@ Since softmax is a nonlinear operation, attribution of $B$'s contribution to $A$
     \item \textbf{Representational:} Where in the network does 3D structure emerge?
 \end{enumerate}
 We apply all four lenses to four model variants spanning 60M to 400M parameters (Table~\ref{tab:models}).
+While related temporal analyses exist for image diffusion~\citep{kynkaanniemi2024guidance}, mechanistic interpretability of geometric components in flow-based protein generation remains largely unexplored.
 Our two main findings are:
 \begin{itemize}
     \item \textbf{Geometric guidance is memoryless} (\emph{when}): Across all models and protein lengths tested, providing $B$ only during late generation always preserves valid structures (with quality degrading as the late window shrinks); providing it only during early generation is indistinguishable from never having $B$. Moreover, we perform a time-gap ablation to show that the past, even if informative, leaves no trace (Section~\ref{sec:causal}).
@@ -68,7 +69,7 @@ Throughout, \emph{early/late} refers to generation time ($t$ near 0 or 1) and \e
 We analyse four Proteina variants (Table~\ref{tab:models}).
 All models include 10 register tokens~\citep{darcet2024registers}.
 Proteins of length $n{=}100$ are generated unconditionally via 100-step SDE sampling (Euler-Maruyama with $dt{=}0.01$).
-Descriptive and functional experiments use 5 seeds; causal ablations 3; error bars are $\pm 1$ s.d.
+Descriptive and functional experiments use 5 seeds; causal ablations 3 (sufficient given the binary nature of structural collapse; see Table~\ref{tab:ablation}); error bars are $\pm 1$ s.d.
 
 \begin{table}[h]
     \centering
@@ -92,7 +93,7 @@ The pair bias $B$ is constructed from three inputs concatenated into a 319-dimen
 These features are linearly projected to $d_\text{pair}$ dimensions (Table~\ref{tab:models}), layer-normalised, then projected to $H$ scalar biases (one per attention head) via a learned linear layer.
 
 Regardless of architecture, $B$ is recomputed at every denoising step from the current $\mathbf{x}_t$, so it evolves through generation time even in no-tri models.
-The architectural difference concerns depth: in no-tri models, the same $B$ is shared across all layers; in tri models, it is additionally updated every 3--5 layers via triangle multiplicative updates (see Table~\ref{tab:models}).
+The architectural difference concerns depth: in no-tri models, the same $B$ is shared across all layers; in tri models, it is additionally updated every 3--5 layers via triangle multiplicative updates, which propagate pairwise information through shared third residues (see Table~\ref{tab:models}).
 
 \subsection{Metrics}
 
@@ -104,7 +105,7 @@ Table~\ref{tab:metrics} defines all metrics used across the four lenses.
     \label{tab:metrics}
     \begin{tabular}{p{2.5cm}p{7.2cm}p{1.6cm}p{2.2cm}}
         \toprule
-        Metric & Definition & Range & Null baseline \\
+        Metric & Definition & Range & Reference \\
         \midrule
         \multicolumn{4}{l}{\emph{Descriptive}} \\[2pt]
         $R = \|B\|_F / \|C\|_F$ & Raw Frobenius norm ratio of the pre-softmax bias and content matrices. $R{>}1$ means $B$ dominates; $R{<}1$ means $C$ dominates. & $[0, \infty)$ & $R = 1$ \\[4pt]
@@ -118,7 +119,7 @@ Table~\ref{tab:metrics} defines all metrics used across the four lenses.
         Precision@$L/5$ & Fraction of top-$k$ attention-ranked pairs ($k{=}n/5$) that are true contacts (C$\alpha < 8$\,\AA, $|i{-}j| \geq 6$). Symmetrised and APC-corrected~\citep{rao2020transformer}. Higher values mean the attention pattern more accurately reflects protein contacts. & $[0, 1]$ & Contact density ($\sim$1--3\%) \\[4pt]
         \midrule
         \multicolumn{4}{l}{\emph{Representational (structure lens)}} \\[2pt]
-        RMSD to final & Kabsch-aligned RMSD of decoded intermediate-layer coordinates to final-layer output. Lower values mean the intermediate representation is geometrically closer to the final structure. & $[0, \infty)$ nm & 0 at final layer \\[4pt]
+        RMSD to final & Kabsch-aligned root mean square deviation (RMSD) of decoded intermediate-layer coordinates to final-layer output. Lower values mean the intermediate representation is geometrically closer to the final structure. & $[0, \infty)$ nm & 0 at final layer \\[4pt]
         Contact similarity & Jaccard index of contact maps ($< 8$\,\AA, $|i{-}j| \geq 6$) between intermediate and final layer. Higher values mean the intermediate contact map more closely matches the final structure. & $[0, 1]$ & 1 at final layer \\
         \bottomrule
     \end{tabular}
@@ -157,7 +158,7 @@ We zero or replace $B$ under the conditions in Table~\ref{tab:ablation_condition
 \end{table}
 
 We additionally perform a fine-grained temporal sweep (split at $t = 0.2, 0.3, \ldots, 0.8$) to characterise the asymmetry continuously.
-The random $B$ condition distinguishes whether the model requires $B$'s geometric \emph{information} or merely its signal \emph{magnitude}.
+The random $B$ condition distinguishes whether the model requires $B$'s geometric information or merely its signal magnitude.
 
 \paragraph{Lens 3: Functional.}
 Following~\citet{rao2020transformer}, we evaluate Contact Precision@$L/5$ for $\mathrm{softmax}(C + B)$, $\mathrm{softmax}(B)$, and $\mathrm{softmax}(C)$.
@@ -238,10 +239,9 @@ Full removal of $B$ is catastrophic in every model: $R_g < 0.15$\,nm with thousa
 Replacing $B$ with magnitude-matched Gaussian noise collapses structures equally severely, confirming the model requires $B$'s geometric \emph{content}, not merely its signal magnitude.
 
 \textbf{The late phase matters; the early phase does not.}
-Figure~\ref{fig:temporal_sweep} shows the fine-grained temporal sweep.
-Providing $B$ only during early generation ($t{\leq}0.5$) then removing it is indistinguishable from full ablation in all four models.
-Providing $B$ only during late generation always preserves valid structures, with quality degrading gradually as the late window shrinks.
-This one-sided asymmetry holds across all model scales despite order-of-magnitude variation in descriptive $R_c$, and across protein lengths $n{=}50$--200 for the 60M no-tri model (Table~\ref{tab:multilength}).
+In the coarse ablation (Table~\ref{tab:ablation}), providing $B$ only during early generation ($t{\leq}0.5$) is indistinguishable from full ablation in all four models; providing it only during late generation preserves valid structures.
+Figure~\ref{fig:temporal_sweep} characterises this asymmetry at finer resolution. Early-only $B$ always collapses regardless of split point, while late-only $B$ preserves valid structures with quality degrading gradually as the late window shrinks.
+This one-sided asymmetry holds across all model scales despite order-of-magnitude variation in descriptive $R_c$, and across protein lengths $n{=}50$--200 for the 60M no-tri model (Table~\ref{tab:multilength}); we expect it to generalise, though length-invariance was not tested for larger models.
 
 \begin{figure}[t]
     \centering
@@ -251,10 +251,10 @@ This one-sided asymmetry holds across all model scales despite order-of-magnitud
 \end{figure}
 
 \textbf{The model has no memory of early $B$.}
-We investigate whether this temporal asymmetry arises because early $B$ effects are transient and forgotten, or because removing $B$ mid-generation causes active disruption regardless of prior history.
+We investigate whether this temporal asymmetry arises because early $B$ effects are transient, or because removing $B$ mid-generation causes disruption regardless of prior history.
 The gap experiment tests this: $B$ is active for $t \in [0, 0.3]$, removed for $t \in (0.3, 0.7)$, then restored for $t \in [0.7, 1]$.
 If removal caused active disruption, gap conditions would perform worse than late-only $B$. Instead, Table~\ref{tab:gap} shows they match within $0.02$\,nm across all four models.
-A tighter gap ($t \in [0, 0.2] \cup [0.8, 1]$) produces the same result: gap conditions match the corresponding late-only controls within $0.02$\,nm across all models (Table~\ref{tab:gap}).
+A wider gap ($t \in [0, 0.2] \cup [0.8, 1]$) produces the same result: gap conditions match the corresponding late-only controls within $0.02$\,nm across all models (Table~\ref{tab:gap}).
 Early $B$ leaves no lasting trace: the trajectory appears to forget both its presence and its absence.
 
 \begin{table}[h]
@@ -279,7 +279,6 @@ Early $B$ leaves no lasting trace: the trajectory appears to forget both its pre
 \textbf{Spatial sensitivity depends on architecture.}
 In no-tri models, removing $B$ from the first half of layers (Deep-only $B$) is more damaging than removing it from the second half (Shallow-only $B$).
 In tri models, this inverts: first-half ablation (Deep-only $B$) is relatively benign ($R_g \geq 0.82$\,nm, 0--1 clashes), while second-half ablation (Shallow-only $B$) is catastrophic ($R_g \leq 0.12$\,nm, thousands of clashes).
-This potentially suggests that the first and second halves are complementary layer sets, and their causal roles are swapped across architectures.
 Ablating the peak-$R_c$ layer individually produces only moderate damage ($R_g$ drops 5--18\%, structures remain valid), suggesting the geometric signal is not concentrated in a single bottleneck layer.
 We did not test temporal sweeps within spatial ablation conditions, but the cross-model universality of the temporal pattern suggests it is robust to layer scope.
 
@@ -316,7 +315,7 @@ Whether $C$ could substitute for $B$ if trained without it remains an open quest
 \begin{figure}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/fig3-contact-precision-all-models.png}
-    \caption{Contact Precision@$L/5$ ($n{=}100$, 5 seeds). Dashed line: random baseline. $B$-only outperforms $C$-only at all scales, but superiority at late $t$ is partly expected by construction (see text). $C$-only never matches $B$-only, consistent with shortcut learning.}
+    \caption{Contact Precision@$L/5$ ($n{=}100$, 5 seeds). Dashed line: random baseline. $B$-only outperforms $C$-only at all scales, but superiority at late $t$ is partly expected by construction (see text). $C$-only never matches $B$-only, consistent with a division of labour in which $C$ does not learn to substitute for $B$.}
     \label{fig:contact}
 \end{figure}
 
@@ -324,9 +323,9 @@ Whether $C$ could substitute for $B$ if trained without it remains an open quest
 \subsection{Representational: Structural Specificity Emerges Only at the Output}
 
 Figure~\ref{fig:structurelens} applies each model's coordinate decoder to intermediate layer representations.
-The headline finding is that contact similarity to the final output is near zero until the last 1--2 layers: intermediate representations occupy a subspace not aligned with coordinate space, and structural specificity concentrates at the output.
-The RMSD profile shows middle layers are furthest from the final output.
-Triangle models show a more gradual RMSD gradient, consistent with their iteratively refined pair representation providing an additional channel for structural refinement deeper in the network.
+Contact similarity to the final output is near zero until the last 1--2 layers: intermediate representations are not in coordinate space, and structural specificity concentrates at the output.
+In triangle models, RMSD decreases gradually across layers and deep layers are causally critical --- the structure lens and spatial ablation align.
+In no-tri models, RMSD is uniformly high until the final layer, yet $B$ must be present in shallow layers, suggesting $B$ shapes the internal representations the final layer draws on, rather than refining a geometrically readable structure.
 
 \begin{figure}[t]
     \centering
@@ -349,14 +348,10 @@ $R_c$ varies from 0.5 to 35 across models, and the peak layer shifts from L0 to 
 The 400M tri model concentrates $R_c = 29.4$ in a shallow layer, but its causal profile matches the 200M tri model in which deep layers are critical.
 Signal magnitude is not a reliable proxy for causal importance; multi-lens analysis is required to avoid misleading conclusions from descriptive metrics alone.
 
-\textbf{Triangle updates invert spatial sensitivity without touching temporal sensitivity.}
-Triangle updates do not merely modulate the degree of spatial sensitivity --- they invert which layers are critical.
-Without them, the first half is the sensitive window; with them, the second half (deep layers) becomes the bottleneck, while the first half is surprisingly robust.
-Yet in both cases the \emph{when} answer is identical.
-
 \textbf{Limitations.}
 All analyses are for unconditional generation; conditional generation may use early $B$ differently, since it encodes information from a target structure.
 The functional gap between $B$-only and $C$-only contact precision may partly reflect training regime rather than an intrinsic constraint --- whether $C$ could substitute for $B$ if trained without it remains untested.
+The mechanism behind the spatial inversion by triangle updates is unexplained; resolving it requires ablations separately controlling triangle update depth and $B$ ablation depth.
 
 % ============================================================
 \section{Conclusion}
@@ -407,6 +402,11 @@ J.~Jumper et~al.
 J.~Kim, D.~Nguyen, S.~Min, S.~Cho, M.~Lee, H.~Lee, and S.~Hong.
 \newblock Pure transformers are powerful graph learners.
 \newblock In \emph{NeurIPS}, 2022.
+
+\bibitem[Kynk\"{a}\"{a}nniemi et~al.(2024)]{kynkaanniemi2024guidance}
+T.~Kynk\"{a}\"{a}nniemi, M.~Aittala, T.~Karras, S.~Laine, T.~Aila, and J.~Lehtinen.
+\newblock Applying guidance in a limited interval improves sample and distribution quality in diffusion models.
+\newblock In \emph{NeurIPS}, 2024.
 
 \bibitem[Lipman et~al.(2023)]{lipman2023flow}
 Y.~Lipman, R.~T.~Q. Chen, H.~Ben-Hamu, M.~Nickel, and M.~Le.
